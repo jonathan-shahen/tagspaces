@@ -156,7 +156,13 @@ class CreateTagGroupDialog extends React.Component<Props, State> {
         fullScreen={fullScreen}
         keepMounted
         scroll="paper"
-        // onKeyDown={confirmFunction}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.keyCode === 13) {
+            this.onConfirm();
+          } else if (event.key === 'Escape') {
+            onClose();
+          }
+        }}
       >
         <DialogTitle>{i18n.t('core:createTagGroupTitle')}</DialogTitle>
         <DialogContent>

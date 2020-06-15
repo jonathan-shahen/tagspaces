@@ -48,7 +48,7 @@ import {
   extractFileName,
   normalizePath,
   cleanTrailingDirSeparator
-} from '-/utils/paths'; // extractFileExtension
+} from '-/utils/paths';
 import PlatformIO from '-/services/platform-io';
 import { formatDateTime4Tag } from '-/utils/misc';
 import { actions as AppActions } from '-/reducers/app';
@@ -178,7 +178,9 @@ const DirectoryMenu = (props: Props) => {
       AppConfig.endTagContainer +
       '.jpg';
     const newFilePath =
-      normalizePath(props.directoryPath) + AppConfig.dirSeparator + fileName;
+      normalizePath(props.directoryPath) +
+      PlatformIO.getDirSeparator() +
+      fileName;
 
     PlatformIO.renameFilePromise(filePath, newFilePath)
       .then(() => {
@@ -228,7 +230,7 @@ const DirectoryMenu = (props: Props) => {
     const file = selection.currentTarget.files[0];
     const filePath =
       normalizePath(props.directoryPath) +
-      AppConfig.dirSeparator +
+      PlatformIO.getDirSeparator() +
       decodeURIComponent(file.name);
 
     const reader = new FileReader();
@@ -290,10 +292,7 @@ const DirectoryMenu = (props: Props) => {
   }
 
   function getDirPath(dirPath: string) {
-    const fileName = extractFileName(
-      dirPath,
-      PlatformIO.haveObjectStoreSupport() ? '/' : AppConfig.dirSeparator
-    );
+    const fileName = extractFileName(dirPath, PlatformIO.getDirSeparator());
     return props.directoryPath && fileName
       ? fileName
       : cleanTrailingDirSeparator(props.directoryPath);

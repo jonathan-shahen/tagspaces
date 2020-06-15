@@ -30,8 +30,8 @@ import DialogContent from '@material-ui/core/DialogContent';
 import DialogTitle from '@material-ui/core/DialogTitle';
 import Grid from '@material-ui/core/Grid';
 import { withStyles } from '@material-ui/core/styles';
+import withMobileDialog from '@material-ui/core/withMobileDialog';
 import Dialog from '@material-ui/core/Dialog';
-// import Slide from '@material-ui/core/Slide';
 import i18n from '-/services/i18n';
 import { getKeyBindingObject } from '-/reducers/settings';
 import { actions as AppActions } from '-/reducers/app';
@@ -39,10 +39,6 @@ import AppConfig from '-/config';
 import { normalizePath } from '-/utils/paths';
 import PlatformIO from '-/services/platform-io';
 import { formatDateTime4Tag } from '-/utils/misc';
-
-// const Transition = React.forwardRef(function Transition(props, ref) {
-//   return <Slide direction="down" ref={ref} {...props} />;
-// });
 
 const styles: any = () => ({
   root: {
@@ -68,6 +64,7 @@ interface Props {
   open: boolean;
   classes: any;
   selectedDirectoryPath: string;
+  fullScreen: boolean;
   chooseDirectoryPath: (path: string) => void;
   showNotification: (message: string, type: string, autohide: boolean) => void;
   reflectCreateEntry: (path: string, isFile: boolean) => void;
@@ -93,7 +90,8 @@ const CreateDialog = (props: Props) => {
     selectedDirectoryPath,
     showNotification,
     open,
-    onClose
+    onClose,
+    fullScreen
   } = props;
 
   function handleKeyPress(event: any) {
@@ -175,7 +173,7 @@ const CreateDialog = (props: Props) => {
     const file = selection.currentTarget.files[0];
     const filePath =
       normalizePath(selectedDirectoryPath) +
-      AppConfig.dirSeparator +
+      PlatformIO.getDirSeparator() +
       decodeURIComponent(file.name);
 
     const reader = new FileReader();
@@ -235,13 +233,25 @@ const CreateDialog = (props: Props) => {
     <Dialog
       open={open}
       onClose={onClose}
+      // fullScreen={fullScreen}
       keepMounted
       scroll="paper"
-      // onEnterKey={(event) => onEnterKeyHandler(event, this.addTags)}
-      // TransitionComponent={Transition}
+      onKeyDown={event => {
+        if (event.key === 'N' || event.key === 'n') {
+          createRichTextFile();
+        } else if (event.key === 'T' || event.key === 't') {
+          createTextFile();
+        } else if (event.key === 'M' || event.key === 'm') {
+          createMarkdownFile();
+        } else if (event.key === 'A' || event.key === 'a') {
+          addFile();
+        } else if (event.key === 'Escape') {
+          onClose();
+        }
+      }}
     >
       <DialogTitle style={{ alignSelf: 'center' }}>
-        Create new content
+        {i18n.t('createNewContent')}
       </DialogTitle>
       <DialogContent
         onKeyPress={handleKeyPress}
@@ -253,19 +263,24 @@ const CreateDialog = (props: Props) => {
             <Button
               onClick={createRichTextFile}
               className={classes.createButton}
+              title={i18n.t('createNoteTitle')}
             >
               <div>
                 <NoteFileIcon />
               </div>
               <div>
-                <Container>Create Note</Container>
+                <Container>{i18n.t('createNote')}</Container>
               </div>
             </Button>
           </Grid>
           <Grid item xs>
-            <Button onClick={createTextFile} className={classes.createButton}>
+            <Button
+              onClick={createTextFile}
+              className={classes.createButton}
+              title={i18n.t('createNoteTitle')}
+            >
               <TextFileIcon />
-              <Container>Create Text File</Container>
+              <Container>{i18n.t('createTextFile')}</Container>
             </Button>
           </Grid>
         </Grid>
@@ -274,15 +289,20 @@ const CreateDialog = (props: Props) => {
             <Button
               onClick={createMarkdownFile}
               className={classes.createButton}
+              title={i18n.t('createMarkdownTitle')}
             >
               <MarkdownFileIcon />
-              <Container>Create Markdown File</Container>
+              <Container>{i18n.t('createMarkdown')}</Container>
             </Button>
           </Grid>
           <Grid item xs>
-            <Button onClick={addFile} className={classes.createButton}>
+            <Button
+              onClick={addFile}
+              className={classes.createButton}
+              title={i18n.t('addFileTitle')}
+            >
               <AddFileIcon />
-              <Container>Add file</Container>
+              <Container>{i18n.t('addFile')}</Container>
             </Button>
           </Grid>
         </Grid>
@@ -299,7 +319,7 @@ const CreateDialog = (props: Props) => {
       <DialogActions style={{ alignSelf: 'center' }}>
         <Button
           data-tid="closeKeyboardDialog"
-          onClick={props.onClose}
+          onClick={onClose}
           color="primary"
         >
           {i18n.t('core:close')}
@@ -329,4 +349,4 @@ function mapActionCreatorsToProps(dispatch) {
 export default connect(
   mapStateToProps,
   mapActionCreatorsToProps
-)(withStyles(styles)(CreateDialog));
+)(withMobileDialog()(withStyles(styles)(CreateDialog)));

@@ -171,7 +171,13 @@ class EditTagDialog extends React.Component<Props, State> {
         onClose={onClose}
         keepMounted
         scroll="paper"
-        // onEnterKey={(event) => onEnterKeyHandler(event, this.addTags)}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.keyCode === 13) {
+            this.onConfirm();
+          } else if (event.key === 'Escape') {
+            onClose();
+          }
+        }}
       >
         <DialogTitle style={{ overflow: 'visible' }}>
           {i18n.t('core:editTagTitle')}

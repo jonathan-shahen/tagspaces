@@ -139,13 +139,14 @@ class Search extends React.Component<Props, State> {
   };
 
   static getDerivedStateFromProps(nextProps, prevState) {
-    let { searchBoxing } = prevState;
-    if (
-      Pro &&
-      (!nextProps.currentDirectory || nextProps.currentDirectory.length < 1)
-    ) {
-      searchBoxing = 'global';
-    }
+    const { searchBoxing } = prevState;
+    // console.log('Path: ' + nextProps.currentDirectory);
+    // if (
+    //   Pro &&
+    //   (!nextProps.currentDirectory || nextProps.currentDirectory.length < 1)
+    // ) {
+    //   searchBoxing = 'global';
+    // }
     if (
       prevState.tagsAND.length < 1 &&
       nextProps.searchQuery &&
@@ -525,23 +526,40 @@ class Search extends React.Component<Props, State> {
             </ToggleButtonGroup>
           </FormControl>
           <br />
-          {this.state.searchBoxing === 'global' && (
-            <FormControlLabel
-              control={
-                <Switch
-                  title="By enabling this option, the search will deliver better results, but it could take longer"
-                  checked={this.state.forceIndexing}
-                  onChange={() =>
-                    this.setState(prevState => ({
-                      forceIndexing: !prevState.forceIndexing
-                    }))
-                  }
-                  name="forceIndexing"
-                />
-              }
-              label="Force reindexing all locations"
-            />
-          )}
+          <FormControlLabel
+            title={i18n.t('core:enableIndexingBySearch')}
+            control={
+              <Switch
+                checked={this.state.forceIndexing}
+                onChange={() =>
+                  this.setState(prevState => ({
+                    forceIndexing: !prevState.forceIndexing
+                  }))
+                }
+                name="forceIndexing"
+              />
+            }
+            label="Force reindexing all locations"
+          />
+          <br />
+          <br />
+          <FormControl className={classes.formControl}>
+            <ButtonGroup style={{ justifyContent: 'center' }}>
+              <Button
+                disabled={indexing}
+                id="searchButton"
+                variant="outlined"
+                color="primary"
+                onClick={this.clickSearchButton}
+                style={{ width: '90%' }}
+                size="small"
+              >
+                {indexing
+                  ? 'Search disabled while indexing'
+                  : i18n.t('searchTitle')}
+              </Button>
+            </ButtonGroup>
+          </FormControl>
           <FormControl className={classes.formControl} disabled={indexing}>
             <TagsSelect
               placeholderText={i18n.t('core:selectTags')}
@@ -813,7 +831,7 @@ class Search extends React.Component<Props, State> {
           </FormControl>
           <FormControl className={classes.formControl}>
             <ButtonGroup style={{ justifyContent: 'center' }}>
-              <Button
+              {/* <Button
                 disabled={indexing}
                 id="searchButton"
                 variant="outlined"
@@ -824,10 +842,12 @@ class Search extends React.Component<Props, State> {
                 {indexing
                   ? 'Search disabled while indexing'
                   : i18n.t('searchTitle')}
-              </Button>
+              </Button> */}
               <Button
                 variant="outlined"
                 color="secondary"
+                size="small"
+                style={{ width: '90%' }}
                 onClick={this.clearSearch}
                 id="resetSearchButton"
               >

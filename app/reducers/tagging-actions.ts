@@ -16,7 +16,6 @@
  *
  */
 
-import uuidv1 from 'uuid';
 import OpenLocationCode from 'open-location-code-typescript';
 import i18n from '../services/i18n';
 import { actions as AppActions } from './app';
@@ -34,7 +33,6 @@ import {
   generateFileName
 } from '../services/utils-io';
 import { formatDateTime4Tag, isPlusCode } from '../utils/misc';
-import AppConfig from '../config';
 import PlatformIO from '../services/platform-io';
 import { Pro } from '../pro';
 import GlobalSearch from '../services/search-index';
@@ -75,7 +73,7 @@ const actions = {
         } else if (tag.functionality === 'dateTagging') {
           if (Pro) {
             tag.path = paths[0]; // todo rethink and remove this!
-            delete tag.functionality;
+            // delete tag.functionality;
             tag.title = formatDateTime4Tag(new Date(), true); // defaultTagDate;
             dispatch(AppActions.toggleEditTagDialog(tag));
           } else {
@@ -108,7 +106,8 @@ const actions = {
           if (
             taglibrary.findIndex(
               tagGroup =>
-                tagGroup.children.findIndex(obj => obj.id === tag.id) !== -1
+                tagGroup.children.findIndex(obj => obj.title === tag.title) !==
+                -1
             ) === -1 &&
             !/^(?:\d+~\d+|\d+)$/.test(tag.title) && // skip adding of tag containing only digits
             !isPlusCode(tag.title) // skip adding of tag containing geo information
@@ -151,7 +150,11 @@ const actions = {
       if (fsEntryMeta) {
         const uniqueTags = getNonExistingTags(
           tags,
-          extractTags(path, settings.tagDelimiter),
+          extractTags(
+            path,
+            settings.tagDelimiter,
+            PlatformIO.getDirSeparator()
+          ),
           fsEntryMeta.tags
         );
         if (uniqueTags.length > 0) {
@@ -200,30 +203,44 @@ const actions = {
       }
     } else if (fsEntryMeta) {
       // Handling tags in filename by existing sidecar
-      const extractedTags = extractTags(path, settings.tagDelimiter);
+      const extractedTags = extractTags(
+        path,
+        settings.tagDelimiter,
+        PlatformIO.getDirSeparator()
+      );
       const uniqueTags = getNonExistingTags(
         tags,
         extractedTags,
         fsEntryMeta.tags
       );
       if (uniqueTags.length > 0) {
-        const fileName = extractFileName(path);
-        const containingDirectoryPath = extractContainingDirectoryPath(path);
+        const fileName = extractFileName(path, PlatformIO.getDirSeparator());
+        const containingDirectoryPath = extractContainingDirectoryPath(
+          path,
+          PlatformIO.getDirSeparator()
+        );
 
         for (let i = 0; i < uniqueTags.length; i += 1) {
           extractedTags.push(uniqueTags[i].title);
         }
         const newFilePath =
           containingDirectoryPath +
-          AppConfig.dirSeparator +
+          PlatformIO.getDirSeparator() +
           generateFileName(fileName, extractedTags, settings.tagDelimiter);
         dispatch(AppActions.renameFile(path, newFilePath));
       }
     } else {
       // Handling tags in filename by no sidecar
-      const fileName = extractFileName(path);
-      const containingDirectoryPath = extractContainingDirectoryPath(path);
-      const extractedTags = extractTags(path);
+      const fileName = extractFileName(path, PlatformIO.getDirSeparator());
+      const containingDirectoryPath = extractContainingDirectoryPath(
+        path,
+        PlatformIO.getDirSeparator()
+      );
+      const extractedTags = extractTags(
+        path,
+        settings.tagDelimiter,
+        PlatformIO.getDirSeparator()
+      );
       for (let i = 0; i < tags.length; i += 1) {
         // check if tag is already in the tag array
         if (extractedTags.indexOf(tags[i].title) < 0) {
@@ -233,7 +250,7 @@ const actions = {
       }
       const newFilePath =
         containingDirectoryPath +
-        AppConfig.dirSeparator +
+        PlatformIO.getDirSeparator() +
         generateFileName(fileName, extractedTags, settings.tagDelimiter);
       if (path !== newFilePath) {
         dispatch(AppActions.renameFile(path, newFilePath));
@@ -291,9 +308,16 @@ const actions = {
     delete tag.id;
     // TODO: Handle adding already added tags
     if (tag.type === 'plain') {
-      const fileName = extractFileName(path);
-      const containingDirectoryPath = extractContainingDirectoryPath(path);
-      const extractedTags = extractTags(path, settings.tagDelimiter);
+      const fileName = extractFileName(path, PlatformIO.getDirSeparator());
+      const containingDirectoryPath = extractContainingDirectoryPath(
+        path,
+        PlatformIO.getDirSeparator()
+      );
+      const extractedTags = extractTags(
+        path,
+        settings.tagDelimiter,
+        PlatformIO.getDirSeparator()
+      );
       let tagFound = false;
       for (let i = 0; i < extractedTags.length; i += 1) {
         // check if tag is already in the tag array
@@ -315,7 +339,7 @@ const actions = {
         dispatch(
           AppActions.renameFile(
             path,
-            containingDirectoryPath + AppConfig.dirSeparator + newFileName
+            containingDirectoryPath + PlatformIO.getDirSeparator() + newFileName
           )
         );
       }
@@ -481,10 +505,17 @@ const actions = {
       });
 
     function removeTagsFromFilename() {
-      const extractedTags = extractTags(path, settings.tagDelimiter);
+      const extractedTags = extractTags(
+        path,
+        settings.tagDelimiter,
+        PlatformIO.getDirSeparator()
+      );
       if (extractedTags.length > 0) {
-        const fileName = extractFileName(path);
-        const containingDirectoryPath = extractContainingDirectoryPath(path);
+        const fileName = extractFileName(path, PlatformIO.getDirSeparator());
+        const containingDirectoryPath = extractContainingDirectoryPath(
+          path,
+          PlatformIO.getDirSeparator()
+        );
         for (let i = 0; i < tagTitlesForRemoving.length; i += 1) {
           const tagLoc = extractedTags.indexOf(tagTitlesForRemoving[i]);
           if (tagLoc < 0) {
@@ -497,7 +528,7 @@ const actions = {
         }
         const newFilePath =
           containingDirectoryPath +
-          AppConfig.dirSeparator +
+          PlatformIO.getDirSeparator() +
           generateFileName(fileName, extractedTags, settings.tagDelimiter);
         if (path !== newFilePath) {
           dispatch(AppActions.renameFile(path, newFilePath));
@@ -553,17 +584,28 @@ const actions = {
 
     function removeAllTagsFromFilename() {
       // Tags in file name case, check is file
-      const extractedTags = extractTags(path, settings.tagDelimiter);
+      const extractedTags = extractTags(
+        path,
+        settings.tagDelimiter,
+        PlatformIO.getDirSeparator()
+      );
       if (extractedTags.length > 0) {
-        const fileTitle = extractTitle(path);
-        let fileExt = extractFileExtension(path);
-        const containingDirectoryPath = extractContainingDirectoryPath(path);
+        const fileTitle = extractTitle(
+          path,
+          false,
+          PlatformIO.getDirSeparator()
+        );
+        let fileExt = extractFileExtension(path, PlatformIO.getDirSeparator());
+        const containingDirectoryPath = extractContainingDirectoryPath(
+          path,
+          PlatformIO.getDirSeparator()
+        );
         if (fileExt.length > 0) {
           fileExt = '.' + fileExt;
         }
         const newFilePath =
           containingDirectoryPath +
-          AppConfig.dirSeparator +
+          PlatformIO.getDirSeparator() +
           fileTitle +
           fileExt;
         dispatch(AppActions.renameFile(path, newFilePath));
@@ -579,9 +621,9 @@ const actions = {
     {
       /*
     console.log('Moves the location of tag in the file name: ' + filePath);
-    var fileName = extractFileName(filePath);
-    var containingDirectoryPath = extractContainingDirectoryPath(filePath);
-    var extractedTags = extractTags(filePath);
+    var fileName = extractFileName(filePath, PlatformIO.getDirSeparator());
+    var containingDirectoryPath = extractContainingDirectoryPath(filePath, PlatformIO.getDirSeparator());
+    var extractedTags = extractTags(filePath, settings.tagDelimiter, PlatformIO.getDirSeparator());
     if (extractedTags.indexOf(tagName) < 0) {
       showAlertDialog("The tag you are trying to move is not part of the file name and that's why it cannot be moved.", $.i18n.t("ns.common:warning"));
       return;
@@ -609,7 +651,7 @@ const actions = {
       }
     }
     var newFileName = generateFileName(fileName, extractedTags);
-    renameFile(filePath, containingDirectoryPath + AppConfig.dirSeparator + newFileName); */
+    renameFile(filePath, containingDirectoryPath + PlatformIO.getDirSeparator(), + newFileName); */
     },
   // smart tagging -> PRO
   addDateTag: (paths: Array<string>) => () =>
@@ -636,7 +678,7 @@ const actions = {
     dispatch: (actions: Object) => void,
     getState: () => any
   ) => {
-    const { locationIndex, settings } = getState();
+    const { settings } = getState();
 
     if (!Pro || !Pro.Indexer || !Pro.Indexer.collectTagsFromIndex) {
       dispatch(
@@ -661,7 +703,7 @@ const actions = {
     }
 
     const uniqueTags = Pro.Indexer.collectTagsFromIndex(
-      locationIndex,
+      GlobalSearch.index,
       tagGroup,
       settings
     );

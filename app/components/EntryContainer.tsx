@@ -39,13 +39,13 @@ import SplitPane from 'react-split-pane';
 import DeleteIcon from '@material-ui/icons/Delete';
 import { withStyles } from '@material-ui/core/styles';
 import RefreshIcon from '@material-ui/icons/Refresh';
-import EntryProperties from './EntryProperties';
-import ConfirmDialog from './dialogs/ConfirmDialog';
-import AppConfig from '../config';
-import PlatformIO from '../services/platform-io';
-import AddRemoveTagsDialog from './dialogs/AddRemoveTagsDialog';
-import { FileSystemEntry } from '../services/utils-io';
-import i18n from '../services/i18n';
+import EntryProperties from '-/components/EntryProperties';
+import ConfirmDialog from '-/components/dialogs/ConfirmDialog';
+import AppConfig from '-/config';
+import PlatformIO from '-/services/platform-io';
+import AddRemoveTagsDialog from '-/components/dialogs/AddRemoveTagsDialog';
+import { FileSystemEntry } from '-/services/utils-io';
+import i18n from '-/services/i18n';
 import {
   extractContainingDirectoryPath,
   extractTitle,
@@ -54,13 +54,13 @@ import {
   baseName,
   extractFileName,
   extractDirectoryName
-} from '../utils/paths';
-import { buffer } from '../utils/misc';
+} from '-/utils/paths';
+import { buffer } from '-/utils/misc';
 import {
   actions as SettingsActions,
   getKeyBindingObject
-} from '../reducers/settings';
-import TaggingActions from '../reducers/tagging-actions';
+} from '-/reducers/settings';
+import TaggingActions from '-/reducers/tagging-actions';
 import {
   OpenedEntry,
   NotificationTypes,
@@ -68,7 +68,7 @@ import {
   isReadOnlyMode,
   getDirectoryContent,
   actions as AppActions
-} from '../reducers/app';
+} from '-/reducers/app';
 
 const defaultSplitSize = 103;
 const openedSplitSize = 360;
@@ -300,7 +300,8 @@ class EntryContainer extends React.Component<Props, State> {
       const currentEntry = nextProps.openedFiles[0];
       const tags = extractTagsAsObjects(
         currentEntry.path,
-        settings.tagDelimiter
+        settings.tagDelimiter,
+        PlatformIO.getDirSeparator()
       );
       this.setState({
         selectedItem: {
@@ -411,10 +412,16 @@ class EntryContainer extends React.Component<Props, State> {
           data.preview ? data.preview : false
         )
           .then(content => {
-            let fileDirectory = extractContainingDirectoryPath(textFilePath);
+            let fileDirectory = extractContainingDirectoryPath(
+              textFilePath,
+              PlatformIO.getDirSeparator()
+            );
             if (AppConfig.isWeb) {
               fileDirectory =
-                extractContainingDirectoryPath(location.href) +
+                extractContainingDirectoryPath(
+                  location.href,
+                  PlatformIO.getDirSeparator()
+                ) +
                 '/' +
                 fileDirectory;
             }
@@ -736,8 +743,14 @@ class EntryContainer extends React.Component<Props, State> {
           onClick={() => {
             const { currentEntry } = this.state;
             const downloadLink = document.getElementById('downloadFile');
-            const entryName = `${baseName(currentEntry.path)}`;
-            const fileName = extractFileName(entryName);
+            const entryName = `${baseName(
+              currentEntry.path,
+              PlatformIO.getDirSeparator()
+            )}`;
+            const fileName = extractFileName(
+              entryName,
+              PlatformIO.getDirSeparator()
+            );
 
             if (downloadLink) {
               if (AppConfig.isWeb) {
@@ -905,7 +918,11 @@ class EntryContainer extends React.Component<Props, State> {
     let fileTitle: string = '';
 
     if (currentEntry && currentEntry.path) {
-      fileTitle = extractTitle(currentEntry.path, !currentEntry.isFile);
+      fileTitle = extractTitle(
+        currentEntry.path,
+        !currentEntry.isFile,
+        PlatformIO.getDirSeparator()
+      );
       // if (fileTitle.length > maxCharactersTitleLength) {
       //   fileTitle = fileTitle.substr(0, maxCharactersTitleLength) + '...';
       // }
@@ -955,10 +972,14 @@ class EntryContainer extends React.Component<Props, State> {
         handlers={{
           closeViewer: this.startClosingFile,
           saveDocument: this.startSavingFile,
-          editDocument: this.editFile
+          editDocument: this.editFile,
+          nextDocument: this.openNextFile,
+          prevDocument: this.openPrevFile
           // reloadDocument: this.reloadDocument,
         }}
         keyMap={{
+          nextDocument: keyBindings.nextDocument,
+          prevDocument: keyBindings.prevDocument,
           closeViewer: keyBindings.closeViewer,
           saveDocument: keyBindings.saveDocument,
           editDocument: keyBindings.editDocument
@@ -1026,9 +1047,7 @@ class EntryContainer extends React.Component<Props, State> {
                   dirPath: currentEntry
                     ? extractDirectoryName(
                         currentEntry.path,
-                        PlatformIO.haveObjectStoreSupport()
-                          ? '/'
-                          : AppConfig.dirSeparator
+                        PlatformIO.getDirSeparator()
                       )
                     : ''
                 })
@@ -1092,15 +1111,20 @@ class EntryContainer extends React.Component<Props, State> {
                   {currentEntry.isFile ? (
                     <Button
                       onClick={this.togglePanel}
-                      title={i18n.t('core:toggleEntryProperties')}
+                      title={currentEntry.url || currentEntry.path}
                       aria-label={i18n.t('core:toggleEntryProperties')}
                       className={classes.entryNameButton}
                     >
                       <div
                         className={classes.fileBadge}
+                        title={i18n.t('core:toggleEntryProperties')}
                         style={{ backgroundColor: currentEntry.color }}
                       >
-                        {'.' + extractFileExtension(currentEntry.path)}
+                        {'.' +
+                          extractFileExtension(
+                            currentEntry.path,
+                            PlatformIO.getDirSeparator()
+                          )}
                       </div>
                       {currentEntry.changed
                         ? String.fromCharCode(0x25cf) + ' '
@@ -1110,12 +1134,13 @@ class EntryContainer extends React.Component<Props, State> {
                   ) : (
                     <Button
                       onClick={this.togglePanel}
-                      title={i18n.t('core:toggleEntryProperties')}
+                      title={currentEntry.url || currentEntry.path}
                       aria-label={i18n.t('core:toggleEntryProperties')}
                       className={classes.entryNameButton}
                     >
                       <div
                         className={classes.fileBadge}
+                        title={i18n.t('core:toggleEntryProperties')}
                         style={{
                           backgroundColor: AppConfig.defaultFolderColor,
                           paddingTop: 5
@@ -1210,6 +1235,7 @@ class EntryContainer extends React.Component<Props, State> {
                   resetState={this.resetState}
                   setPropertiesEditMode={this.setPropertiesEditMode}
                   entryPath={currentEntry.path}
+                  entryURL={currentEntry.url}
                   shouldReload={currentEntry.shouldReload}
                   renameFile={this.props.renameFile}
                   renameDirectory={this.props.renameDirectory}

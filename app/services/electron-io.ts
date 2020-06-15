@@ -21,7 +21,6 @@ import winattr from 'winattr';
 import {
   extractParentDirectoryPath,
   getMetaDirectoryPath
-  // extractFileExtension
 } from '../utils/paths';
 import { arrayBufferToBuffer } from '../utils/misc';
 import AppConfig from '../config';
@@ -382,7 +381,7 @@ export default class ElectronIO {
 
           // Read the .ts meta content
           if (!lite && containsMetaFolder) {
-            metaFolderPath = getMetaDirectoryPath(path);
+            metaFolderPath = getMetaDirectoryPath(path, AppConfig.dirSeparator);
             this.fs.readdir(metaFolderPath, (err, metaEntries) => {
               if (err) {
                 console.log(
@@ -593,7 +592,9 @@ export default class ElectronIO {
     newDirName: string
   ): Promise<any> => {
     const newDirPath =
-      extractParentDirectoryPath(dirPath) + AppConfig.dirSeparator + newDirName;
+      extractParentDirectoryPath(dirPath, AppConfig.dirSeparator) +
+      AppConfig.dirSeparator +
+      newDirName;
     console.log('Renaming dir: ' + dirPath + ' to ' + newDirPath);
     // stopWatchingDirectories();
     return new Promise((resolve, reject) => {
@@ -808,9 +809,13 @@ export default class ElectronIO {
     });
 
   openDirectory = (dirPath: string): void => {
-    this.electron.shell.showItemInFolder(
-      dirPath + AppConfig.dirSeparator + '.'
-    );
+    if (AppConfig.isWin) {
+      this.electron.shell.showItemInFolder(dirPath);
+    } else {
+      this.electron.shell.showItemInFolder(
+        dirPath + AppConfig.dirSeparator + '.'
+      );
+    }
   };
 
   showInFileManager = (filePath: string): void => {
@@ -818,7 +823,15 @@ export default class ElectronIO {
   };
 
   openFile = (filePath: string): void => {
-    this.electron.shell.openItem(filePath);
+    this.electron.shell
+      .openPath(filePath)
+      .then(() => {
+        console.log('File successfully opened ' + filePath);
+        return true;
+      })
+      .catch(e => {
+        console.log('Opening path ' + filePath + ' failed with ' + e);
+      });
   };
 
   openUrl = (url: string): void => {

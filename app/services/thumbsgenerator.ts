@@ -106,12 +106,18 @@ function saveThumbnailPromise(filePath, dataURL) {
 }
 
 function getThumbFileLocation(filePath: string) {
-  const containingFolder = extractContainingDirectoryPath(filePath);
-  const metaFolder = getMetaDirectoryPath(containingFolder);
+  const containingFolder = extractContainingDirectoryPath(
+    filePath,
+    PlatformIO.getDirSeparator()
+  );
+  const metaFolder = getMetaDirectoryPath(
+    containingFolder,
+    PlatformIO.getDirSeparator()
+  );
   return (
     metaFolder +
-    AppConfig.dirSeparator +
-    extractFileName(filePath) +
+    PlatformIO.getDirSeparator() +
+    extractFileName(filePath, PlatformIO.getDirSeparator()) +
     AppConfig.thumbFileExt
   );
 }
@@ -191,8 +197,14 @@ export function createThumbnailPromise(
   thumbFilePath: string
 ): Promise<any> {
   return new Promise(async resolve => {
-    const metaDirectory = extractContainingDirectoryPath(thumbFilePath);
-    const fileDirectory = extractContainingDirectoryPath(filePath);
+    const metaDirectory = extractContainingDirectoryPath(
+      thumbFilePath,
+      PlatformIO.getDirSeparator()
+    );
+    const fileDirectory = extractContainingDirectoryPath(
+      filePath,
+      PlatformIO.getDirSeparator()
+    );
     const normalizedFileDirectory = normalizePath(fileDirectory);
     if (normalizedFileDirectory.endsWith(AppConfig.metaFolder)) {
       resolve(); // prevent creating thumbs in meta/.ts folder
@@ -226,7 +238,10 @@ export function createThumbnailPromise(
 }
 
 export function generateThumbnailPromise(fileURL: string, fileSize: number) {
-  const ext = extractFileExtension(fileURL).toLowerCase();
+  const ext = extractFileExtension(
+    fileURL,
+    PlatformIO.getDirSeparator()
+  ).toLowerCase();
 
   if (supportedImgs.indexOf(ext) >= 0) {
     if (fileSize && fileSize < maxFileSize) {
@@ -285,60 +300,62 @@ function generateImageThumbnail(fileURL): Promise<string> {
 
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      EXIF.getData(img as any, function() {
-        // TODO Use EXIF only for jpegs
-        const orientation = EXIF.getTag(this, 'Orientation');
-        /*
-          1 - 0 degrees – the correct orientation, no adjustment is required.
-          2 - 0 degrees, mirrored – image has been flipped back-to-front.
-          3 - 180 degrees – image is upside down.
-          4 - 180 degrees, mirrored – image is upside down and flipped back-to-front.
-          5 - 90 degrees – image is on its side.
-          6 - 90 degrees, mirrored – image is on its side and flipped back-to-front.
-          7 - 270 degrees – image is on its far side.
-          8 - 270 degrees, mirrored – image is on its far side and flipped back-to-front.
-        */
-        let angleInRadians;
-        switch (orientation) {
-          case 8:
-            angleInRadians = 270 * (Math.PI / 180);
-            break;
-          case 3:
-            angleInRadians = 180 * (Math.PI / 180);
-            break;
-          case 6:
-            angleInRadians = 90 * (Math.PI / 180);
-            break;
-          case 1:
-            // ctx.rotate(0);
-            break;
-          default:
-          // ctx.rotate(0);
-        }
-        if (img.width >= img.height) {
-          canvas.width = maxSize;
-          canvas.height = (maxSize * img.height) / img.width;
-        } else {
-          canvas.height = maxSize;
-          canvas.width = (maxSize * img.width) / img.height;
-        }
-        const width = canvas.width;
-        const height = canvas.height;
-        const x = canvas.width / 2;
-        const y = canvas.height / 2;
+      // EXIF extraction not need because the image are rotated
+      // automatically in Chrome version 81 and higher
+      // EXIF.getData(img as any, function() {
+      //   // TODO Use EXIF only for jpegs
+      //   const orientation = EXIF.getTag(this, 'Orientation');
+      //   /*
+      //     1 - 0 degrees – the correct orientation, no adjustment is required.
+      //     2 - 0 degrees, mirrored – image has been flipped back-to-front.
+      //     3 - 180 degrees – image is upside down.
+      //     4 - 180 degrees, mirrored – image is upside down and flipped back-to-front.
+      //     5 - 90 degrees – image is on its side.
+      //     6 - 90 degrees, mirrored – image is on its side and flipped back-to-front.
+      //     7 - 270 degrees – image is on its far side.
+      //     8 - 270 degrees, mirrored – image is on its far side and flipped back-to-front.
+      //   */
+      //   let angleInRadians;
+      //   switch (orientation) {
+      //     case 8:
+      //       angleInRadians = 270 * (Math.PI / 180);
+      //       break;
+      //     case 3:
+      //       angleInRadians = 180 * (Math.PI / 180);
+      //       break;
+      //     case 6:
+      //       angleInRadians = 90 * (Math.PI / 180);
+      //       break;
+      //     case 1:
+      //       // ctx.rotate(0);
+      //       break;
+      //     default:
+      //     // ctx.rotate(0);
+      //   }
+      if (img.width >= img.height) {
+        canvas.width = maxSize;
+        canvas.height = (maxSize * img.height) / img.width;
+      } else {
+        canvas.height = maxSize;
+        canvas.width = (maxSize * img.width) / img.height;
+      }
+      const { width } = canvas;
+      const { height } = canvas;
+      const x = canvas.width / 2;
+      const y = canvas.height / 2;
 
-        ctx.translate(x, y);
-        ctx.rotate(angleInRadians);
-        ctx.fillStyle = bgColor;
-        ctx.fillRect(-width / 2, -height / 2, width, height);
-        ctx.drawImage(img, -width / 2, -height / 2, width, height);
-        ctx.rotate(-angleInRadians);
-        ctx.translate(-x, -y);
-        const dataurl = canvas.toDataURL(AppConfig.thumbType);
-        resolve(dataurl);
-        img = null;
-        canvas = null;
-      });
+      ctx.translate(x, y);
+      // ctx.rotate(angleInRadians);
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(-width / 2, -height / 2, width, height);
+      ctx.drawImage(img, -width / 2, -height / 2, width, height);
+      // ctx.rotate(-angleInRadians);
+      ctx.translate(-x, -y);
+      const dataurl = canvas.toDataURL(AppConfig.thumbType);
+      resolve(dataurl);
+      img = null;
+      canvas = null;
+      // });
     };
     img.src = fileURL;
     img.onerror = errorHandler;

@@ -19,7 +19,6 @@
 import React, { Component } from 'react';
 import { bindActionCreators } from 'redux';
 import { connect } from 'react-redux';
-import uuidv1 from 'uuid';
 import { withStyles } from '@material-ui/core/styles';
 import { translate } from 'react-i18next';
 import SplitPane from 'react-split-pane';
@@ -495,7 +494,7 @@ class MainPage extends Component<Props, State> {
             fileName = decodeURIComponent(file.name);
             filePath =
               normalizePath(this.props.directoryPath) +
-              AppConfig.dirSeparator +
+              PlatformIO.getDirSeparator() +
               fileName;
           } catch (err) {
             console.warn(
@@ -663,7 +662,6 @@ class MainPage extends Component<Props, State> {
         )}
         {isEditTagDialogOpened && (
           <EditEntryTagDialogAsync
-            key={uuidv1()}
             open={isEditTagDialogOpened}
             onClose={toggleEditTagDialog}
           />
@@ -684,7 +682,6 @@ class MainPage extends Component<Props, State> {
           selectedDirectoryPath={directoryPath}
         />
         <CreateFileDialog
-          key={uuidv1()}
           open={isCreateFileDialogOpened}
           selectedDirectoryPath={
             this.state.selectedDirectoryPath || directoryPath
@@ -722,7 +719,7 @@ class MainPage extends Component<Props, State> {
           message="Loading or generating thumbnails..."
           action={[
             <IconButton
-              key="close"
+              key="closeButton"
               aria-label={i18n.t('core:closeButton')}
               color="inherit"
               onClick={() => this.props.setGeneratingThumbnails(false)}
@@ -738,6 +735,7 @@ class MainPage extends Component<Props, State> {
           message="Indexing"
           action={[
             <Button
+              key="cancelIndexButton"
               color="secondary"
               size="small"
               onClick={this.props.cancelDirectoryIndexing}
@@ -752,10 +750,16 @@ class MainPage extends Component<Props, State> {
           autoHideDuration={undefined}
           message={'Version ' + this.props.lastPublishedVersion + ' available.'}
           action={[
-            <Button color="secondary" size="small" onClick={this.skipRelease}>
+            <Button
+              key="laterButton"
+              color="secondary"
+              size="small"
+              onClick={this.skipRelease}
+            >
               {i18n.t('core:later')}
             </Button>,
             <Button
+              key="changelogButton"
               color="secondary"
               size="small"
               onClick={this.openChangelogPage}
@@ -763,6 +767,7 @@ class MainPage extends Component<Props, State> {
               {i18n.t('core:releaseNotes')}
             </Button>,
             <Button
+              key="latestVersionButton"
               color="primary"
               size="small"
               onClick={this.getLatestVersion}
@@ -779,6 +784,12 @@ class MainPage extends Component<Props, State> {
           >
             <SplitPane
               split="vertical"
+              style={{
+                borderTop:
+                  AppConfig.isElectron && !AppConfig.isMacLike
+                    ? '1px solid lightgray'
+                    : 'none'
+              }}
               minSize={200}
               maxSize={450}
               resizerStyle={{ backgroundColor: theme.palette.divider }}

@@ -158,14 +158,21 @@ app.on('ready', async () => {
     y: mainWindowState.y,
     width: mainWindowState.width,
     height: mainWindowState.height,
-    icon: path.join(__dirname, 'assets/icons/128x128.png'),
+    // icon: path.join(__dirname, 'assets/icons/128x128.png'),
     webPreferences: {
       nodeIntegration: true,
       webviewTag: true
     }
   });
 
-  mainWindow.loadURL(mainHTML + startupParameter);
+  const winUserAgent =
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36';
+  const testWinOnUnix = false; // set to true to simulate windows os, useful for testing s3 handling
+
+  mainWindow.loadURL(
+    mainHTML + startupParameter,
+    testWinOnUnix ? { userAgent: winUserAgent } : {}
+  );
   mainWindow.setMenuBarVisibility(true);
 
   mainWindow.webContents.on('did-finish-load', () => {
@@ -288,7 +295,9 @@ app.on('ready', async () => {
 
   function showTagSpaces() {
     if (mainWindow) {
-      mainWindow.restore();
+      if (mainWindow.isMinimized()) {
+        mainWindow.restore();
+      }
       mainWindow.show();
     }
   }

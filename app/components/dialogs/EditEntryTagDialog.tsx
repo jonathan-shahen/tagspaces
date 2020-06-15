@@ -182,7 +182,13 @@ const EditEntryTagDialog = (props: Props) => {
       open={open}
       fullScreen={fullScreen}
       onClose={onClose}
-      // onEnterKey={(event) => onEnterKeyHandler(event, onConfirm)}
+      onKeyDown={event => {
+        if (event.key === 'Enter' || event.keyCode === 13) {
+          onConfirm();
+        } else if (event.key === 'Escape') {
+          onClose();
+        }
+      }}
     >
       {renderTitle()}
       {renderContent()}

@@ -35,6 +35,7 @@ import TagContainerDnd from '-/components/TagContainerDnd';
 import TagContainer from '-/components/TagContainer';
 import i18n from '-/services/i18n';
 import { Tag } from '-/reducers/taglibrary';
+import PlatformIO from '-/services/platform-io';
 
 const maxDescriptionPreviewLength = 100;
 
@@ -79,6 +80,11 @@ const CellContent = (props: Props) => {
     openFile
   } = props;
   const fsEntryBackgroundColor = fsEntry.color ? fsEntry.color : 'transparent';
+  const entryTitle = extractTitle(
+    fsEntry.name,
+    !fsEntry.isFile,
+    PlatformIO.getDirSeparator()
+  );
 
   let description = removeMd(fsEntry.description);
   if (description.length > maxDescriptionPreviewLength) {
@@ -90,13 +96,6 @@ const CellContent = (props: Props) => {
     fsEntry.isFile,
     supportedFileTypes
   );
-
-  // let thumbPathUrl = fsEntry.thumbPath
-  //   ? 'url("' + fsEntry.thumbPath + '")'
-  //   : '';
-  // if (AppConfig.isWin) {
-  //   thumbPathUrl = thumbPathUrl.split('\\').join('\\\\');
-  // }
 
   let tagTitles = '';
   fsEntry.tags.map(tag => {
@@ -167,7 +166,7 @@ const CellContent = (props: Props) => {
           noWrap={true}
           variant="body1"
         >
-          {extractTitle(fsEntry.name, !fsEntry.isFile)}
+          {entryTitle}
         </Typography>
         {fsEntry.isFile ? (
           <div className={classes.gridDetails}>
@@ -239,16 +238,7 @@ const CellContent = (props: Props) => {
             textAlign: 'center',
             backgroundColor: fsEntryBackgroundColor
           }}
-          // onClick={() => {}}
         >
-          {/* {selected && (
-            <span title={fsEntry.path}>
-              <SelectedIcon
-                className={classes.rowFolder}
-                style={{ backgroundColor: fsEntryColor }}
-              />
-            </span>
-          )} */}
           {fsEntry.isFile ? (
             <div
               className={classes.rowFileExtension}
@@ -276,7 +266,7 @@ const CellContent = (props: Props) => {
             }}
           >
             <Typography style={{ wordBreak: 'break-all', alignSelf: 'center' }}>
-              {extractTitle(fsEntry.name, !fsEntry.isFile)}
+              {entryTitle}
               &nbsp;
               {showTags
                 ? fsEntry.tags.map(tag => renderTag(tag))
@@ -286,7 +276,7 @@ const CellContent = (props: Props) => {
         ) : (
           <Grid item xs zeroMinWidth>
             <Typography style={{ wordBreak: 'break-all' }}>
-              {extractTitle(fsEntry.name, !fsEntry.isFile)}
+              {entryTitle}
             </Typography>
             {showTags
               ? fsEntry.tags.map(tag => renderTag(tag))

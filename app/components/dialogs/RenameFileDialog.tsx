@@ -28,11 +28,11 @@ import DialogTitle from '@material-ui/core/DialogTitle';
 import { withStyles } from '@material-ui/core/styles';
 import FormControl from '@material-ui/core/FormControl';
 import FormHelperText from '@material-ui/core/FormHelperText';
-import { DialogTransition } from './GenericDialog';
 import AppConfig from '-/config';
 import i18n from '-/services/i18n';
 import { extractFileName, extractContainingDirectoryPath } from '-/utils/paths';
 import { actions as AppActions } from '-/reducers/app';
+import PlatformIO from '-/services/platform-io';
 
 interface Props {
   open: boolean;
@@ -66,12 +66,15 @@ class RenameFileDialog extends React.Component<Props, State> {
 
   componentWillReceiveProps = (nextProps: any) => {
     if (nextProps.open) {
-      const fileName = extractFileName(nextProps.selectedFilePath);
+      const fileName = extractFileName(
+        nextProps.selectedFilePath,
+        PlatformIO.getDirSeparator()
+      );
       this.setState({ fileName }, () => {
         this.fileName.focus();
         if (fileName) {
           const indexOfBracket = fileName.indexOf(AppConfig.beginTagContainer);
-          const indexOfDot = fileName.indexOf('.');
+          const indexOfDot = fileName.lastIndexOf('.');
           let endRange = fileName.length;
           if (indexOfBracket > 0) {
             endRange = indexOfBracket;
@@ -109,10 +112,11 @@ class RenameFileDialog extends React.Component<Props, State> {
   onConfirm = () => {
     if (!this.state.disableConfirmButton) {
       const fileDirectory = extractContainingDirectoryPath(
-        this.props.selectedFilePath
+        this.props.selectedFilePath,
+        PlatformIO.getDirSeparator()
       );
       const newFilePath =
-        fileDirectory + AppConfig.dirSeparator + this.state.fileName;
+        fileDirectory + PlatformIO.getDirSeparator() + this.state.fileName;
       this.props.renameFile(this.props.selectedFilePath, newFilePath);
       this.props.onClose();
       this.setState({ inputError: false, disableConfirmButton: true });
@@ -178,11 +182,15 @@ class RenameFileDialog extends React.Component<Props, State> {
     return (
       <Dialog
         open={open}
-        TransitionComponent={DialogTransition}
         keepMounted
         onClose={onClose}
-        onBackdropClick={onClose}
-        // onKeyDown={((event) => onEnterKeyHandler(event, this.onConfirm))}
+        onKeyDown={event => {
+          if (event.key === 'Enter' || event.keyCode === 13) {
+            this.onConfirm();
+          } else if (event.key === 'Escape') {
+            onClose();
+          }
+        }}
       >
         {this.renderTitle()}
         {this.renderContent()}

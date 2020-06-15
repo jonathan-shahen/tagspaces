@@ -576,6 +576,7 @@ class LocationManager extends React.Component<Props, State> {
    * @param monitor
    */
   handleFileMoveDrop = (item, monitor) => {
+    const { path } = monitor.getItem();
     if (this.props.isReadOnlyMode) {
       this.props.showNotification(
         i18n.t('core:dndDisabledReadOnlyMode'),
@@ -584,11 +585,32 @@ class LocationManager extends React.Component<Props, State> {
       );
       return;
     }
-    if (monitor) {
+    if (!AppConfig.isWin && !path.startsWith('/')) {
+      this.props.showNotification(
+        i18n.t('Moving file not possible'),
+        'error',
+        true
+      );
+      return;
+    }
+    if (AppConfig.isWin && !path.substr(1).startsWith(':')) {
+      this.props.showNotification(
+        i18n.t('Moving file not possible'),
+        'error',
+        true
+      );
+      return;
+    }
+    let targetPath;
+    if (item.children && item.children.props && item.children.props.path) {
+      targetPath = item.children.props.path;
+    } else {
+      targetPath = item.children[1].props.record.path;
+    }
+    if (monitor && targetPath) {
       // TODO handle monitor -> isOver and change folder icon
-      const { path } = monitor.getItem();
       console.log('Dropped files: ' + path);
-      this.props.moveFiles([path], item.children[1].props.record.path);
+      this.props.moveFiles([path], targetPath);
     }
   };
 
@@ -607,6 +629,7 @@ class LocationManager extends React.Component<Props, State> {
   // <Tooltip id="tooltip-icon" title={i18n.t('core:moreOperations')} placement="bottom"></Tooltip>
   renderLocation = (location: Location) => {
     let table;
+    const isCloudLocation = location.type === locationType.TYPE_CLOUD;
     if (this.state.dirs[location.uuid] !== undefined) {
       const columns = [
         {
@@ -676,17 +699,38 @@ class LocationManager extends React.Component<Props, State> {
               <LocationIcon className={this.props.classes.icon} />
             )}
           </ListItemIcon>
-          <div style={{ maxWidth: 250 }}>
-            <Typography
-              variant="inherit"
-              style={{ paddingLeft: 5, paddingRight: 5 }}
-              className={this.props.classes.header}
-              data-tid="locationTitleElement"
-              noWrap
+
+          {isCloudLocation ? (
+            <div style={{ maxWidth: 250 }}>
+              <Typography
+                variant="inherit"
+                style={{ paddingLeft: 5, paddingRight: 5 }}
+                className={this.props.classes.header}
+                data-tid="locationTitleElement"
+                noWrap
+              >
+                {location.name}
+              </Typography>
+            </div>
+          ) : (
+            <TargetMoveFileBox
+              // @ts-ignore
+              accepts={[DragItemTypes.FILE]}
+              onDrop={this.handleFileMoveDrop}
             >
-              {location.name}
-            </Typography>
-          </div>
+              <div style={{ maxWidth: 250 }} path={location.paths[0]}>
+                <Typography
+                  variant="inherit"
+                  style={{ paddingLeft: 5, paddingRight: 5 }}
+                  className={this.props.classes.header}
+                  data-tid="locationTitleElement"
+                  noWrap
+                >
+                  {location.name}
+                </Typography>
+              </div>
+            </TargetMoveFileBox>
+          )}
           {!isLocationsReadOnly && (
             <ListItemSecondaryAction>
               <IconButton

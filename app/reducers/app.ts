@@ -17,7 +17,7 @@
  */
 
 import uuidv1 from 'uuid';
-import { Location, locationType } from './locations';
+import { Location, getLocation, locationType } from './locations';
 import PlatformIO from '../services/platform-io';
 import AppConfig from '../config';
 import {
@@ -391,7 +391,7 @@ export default (state: any = initialState, action: any) => {
         entryIndex < 0 &&
         extractParentDirectoryPath(
           action.newEntry.path,
-          PlatformIO.haveObjectStoreSupport() ? '/' : AppConfig.dirSeparator
+          PlatformIO.getDirSeparator()
         ).replace(/[/\\]/g, '') ===
           state.currentDirectoryPath.replace(/[/\\]/g, '')
       ) {
@@ -415,12 +415,19 @@ export default (state: any = initialState, action: any) => {
           return {
             ...entry,
             path: action.newPath,
-            // thumbPath: getThumbFileLocationForFile(action.newPath), // not needed due timing issue
-            name: extractFileName(action.newPath),
-            extension: extractFileExtension(action.newPath),
+            // thumbPath: getThumbFileLocationForFile(action.newPath, PlatformIO.getDirSeparator()), // not needed due timing issue
+            name: extractFileName(action.newPath, PlatformIO.getDirSeparator()),
+            extension: extractFileExtension(
+              action.newPath,
+              PlatformIO.getDirSeparator()
+            ),
             tags: [
               ...entry.tags.filter(tag => tag.type === 'sidecar'), // add only sidecar tags
-              ...extractTagsAsObjects(action.newPath) // , getTagDelimiter(state))  TODO https://itnext.io/passing-state-between-reducers-in-redux-318de6db06cd
+              ...extractTagsAsObjects(
+                action.newPath,
+                AppConfig.tagDelimiter,
+                PlatformIO.getDirSeparator()
+              )
             ]
           };
         }),
@@ -637,12 +644,9 @@ export const actions = {
     const currentLocationPath = normalizePath(getCurrentLocationPath(state));
 
     if (currentDirectoryPath) {
-      const dirSep = PlatformIO.haveObjectStoreSupport()
-        ? '/'
-        : AppConfig.dirSeparator;
       const parentDirectory = extractParentDirectoryPath(
         currentDirectoryPath,
-        dirSep
+        PlatformIO.getDirSeparator()
       );
       // console.log('parentDirectory: ' + parentDirectory  + ' - currentLocationPath: ' + currentLocationPath);
       if (parentDirectory.includes(currentLocationPath)) {
@@ -674,7 +678,9 @@ export const actions = {
     const { settings } = getState();
     window.walkCanceled = false;
 
-    loadMetaDataPromise(normalizePath(directoryPath) + AppConfig.dirSeparator)
+    loadMetaDataPromise(
+      normalizePath(directoryPath) + PlatformIO.getDirSeparator()
+    )
       .then(fsEntryMeta => {
         if (fsEntryMeta.color) {
           dispatch(actions.setCurrentDirectoryColor(fsEntryMeta.color));
@@ -691,7 +697,13 @@ export const actions = {
     dispatch(actions.showNotification(i18n.t('core:loading'), 'info', false));
     PlatformIO.listDirectoryPromise(directoryPath, false)
       .then(results => {
-        prepareDirectoryContent(results, directoryPath, settings, dispatch);
+        prepareDirectoryContent(
+          results,
+          directoryPath,
+          settings,
+          dispatch,
+          getState
+        );
         return true;
       })
       .catch(error => {
@@ -712,7 +724,7 @@ export const actions = {
     showIsLoading?: boolean
   ) => ({
     type: types.LOAD_DIRECTORY_SUCCESS,
-    directoryPath: directoryPath || AppConfig.dirSeparator,
+    directoryPath: directoryPath || PlatformIO.getDirSeparator(),
     directoryContent,
     showIsLoading
   }),
@@ -768,9 +780,7 @@ export const actions = {
             i18n.t('deletingDirectorySuccessfull', {
               dirPath: extractDirectoryName(
                 directoryPath,
-                PlatformIO.haveObjectStoreSupport()
-                  ? '/'
-                  : AppConfig.dirSeparator
+                PlatformIO.getDirSeparator()
               )
             }),
             'default',
@@ -786,9 +796,7 @@ export const actions = {
             i18n.t('errorDeletingDirectoryAlert', {
               dirPath: extractDirectoryName(
                 directoryPath,
-                PlatformIO.haveObjectStoreSupport()
-                  ? '/'
-                  : AppConfig.dirSeparator
+                PlatformIO.getDirSeparator()
               )
             }),
             'error',
@@ -813,7 +821,8 @@ export const actions = {
         dispatch(
           actions.showNotification(
             `Renaming directory ${extractDirectoryName(
-              directoryPath
+              directoryPath,
+              PlatformIO.getDirSeparator()
             )} successful.`,
             'default',
             true
@@ -825,7 +834,10 @@ export const actions = {
         console.warn('Error while renaming directory: ' + error);
         dispatch(
           actions.showNotification(
-            `Error renaming directory '${extractDirectoryName(directoryPath)}'`,
+            `Error renaming directory '${extractDirectoryName(
+              directoryPath,
+              PlatformIO.getDirSeparator()
+            )}'`,
             'error',
             true
           )
@@ -846,7 +858,8 @@ export const actions = {
         dispatch(
           actions.showNotification(
             `Creating directory ${extractDirectoryName(
-              directoryPath
+              directoryPath,
+              PlatformIO.getDirSeparator()
             )} successful.`,
             'default',
             true
@@ -858,7 +871,10 @@ export const actions = {
         console.warn('Error creating directory: ' + error);
         dispatch(
           actions.showNotification(
-            `Error creating directory '${extractDirectoryName(directoryPath)}'`,
+            `Error creating directory '${extractDirectoryName(
+              directoryPath,
+              PlatformIO.getDirSeparator()
+            )}'`,
             'error',
             true
           )
@@ -874,7 +890,7 @@ export const actions = {
     if (app.currentDirectoryPath) {
       const filePath =
         app.currentDirectoryPath +
-        AppConfig.dirSeparator +
+        PlatformIO.getDirSeparator() +
         'textfile' +
         AppConfig.beginTagContainer +
         formatDateTime4Tag(new Date(), true) +
@@ -922,7 +938,7 @@ export const actions = {
   ) => (dispatch: (actions: Object) => void, getState: () => any) => {
     const fileNameAndExt = fileName + '.' + fileType;
     const filePath =
-      normalizePath(targetPath) + AppConfig.dirSeparator + fileNameAndExt;
+      normalizePath(targetPath) + PlatformIO.getDirSeparator() + fileNameAndExt;
     let fileContent = content;
     if (fileType === 'html') {
       const { newHTMLFileContent } = getState().settings;
@@ -1117,7 +1133,13 @@ export const actions = {
       entryPath,
       isFile
     );
-    entryForOpening.url = PlatformIO.getURLforPath(entryPath); // Needed for the s3 support
+    const { currentDirectoryEntries } = getState().app;
+    const currentEntry = currentDirectoryEntries.find(
+      entry => entry.path === entryPath
+    );
+    if (currentEntry && currentEntry.url) {
+      entryForOpening.url = currentEntry.url;
+    }
     if (
       editMode &&
       entryForOpening.editingExtensionId &&
@@ -1221,16 +1243,13 @@ export const actions = {
   reflectCreateEntry: (path: string, isFile: boolean) => (
     dispatch: (actions: Object) => void
   ) => {
-    const separator = PlatformIO.haveObjectStoreSupport()
-      ? '/'
-      : AppConfig.dirSeparator;
     const newEntry = {
       uuid: uuidv1(),
       name: isFile
-        ? extractFileName(path, separator)
-        : extractDirectoryName(path, separator),
+        ? extractFileName(path, PlatformIO.getDirSeparator())
+        : extractDirectoryName(path, PlatformIO.getDirSeparator()),
       isFile,
-      extension: extractFileExtension(path),
+      extension: extractFileExtension(path, PlatformIO.getDirSeparator()),
       description: '',
       tags: [],
       size: 0,
@@ -1295,8 +1314,8 @@ export const actions = {
         );
         // Delete sidecar file and thumb
         deleteFilesPromise([
-          getMetaFileLocationForFile(filePath),
-          getThumbFileLocationForFile(filePath)
+          getMetaFileLocationForFile(filePath, PlatformIO.getDirSeparator()),
+          getThumbFileLocationForFile(filePath, PlatformIO.getDirSeparator())
         ])
           .then(() => {
             console.log(
@@ -1336,12 +1355,18 @@ export const actions = {
         // Update sidecar file and thumb
         renameFilesPromise([
           [
-            getMetaFileLocationForFile(filePath),
-            getMetaFileLocationForFile(newFilePath)
+            getMetaFileLocationForFile(filePath, PlatformIO.getDirSeparator()),
+            getMetaFileLocationForFile(
+              newFilePath,
+              PlatformIO.getDirSeparator()
+            )
           ],
           [
-            getThumbFileLocationForFile(filePath),
-            getThumbFileLocationForFile(newFilePath)
+            getThumbFileLocationForFile(filePath, PlatformIO.getDirSeparator()),
+            getThumbFileLocationForFile(
+              newFilePath,
+              PlatformIO.getDirSeparator()
+            )
           ]
         ])
           .then(() => {
@@ -1406,16 +1431,28 @@ function prepareDirectoryContent(
   dirEntries,
   directoryPath,
   settings,
-  dispatch
+  dispatch,
+  getState
 ) {
   const directoryContent = [];
   const tmbGenerationPromises = [];
   const tmbGenerationList = [];
   const isWorkerAvailable = PlatformIO.isWorkerAvailable();
+  const currentLocation: Location = getLocation(
+    getState(),
+    getState().app.currentLocationId
+  );
+  const isCloudLocation = currentLocation.type === locationType.TYPE_CLOUD;
+
   dirEntries.map(entry => {
     if (!settings.showUnixHiddenEntries && entry.name.startsWith('.')) {
       return true;
     }
+
+    if (isCloudLocation) {
+      entry.url = PlatformIO.getURLforPath(entry.path);
+    }
+
     const enhancedEntry = enhanceEntry(entry);
     directoryContent.push(enhancedEntry);
     if (
@@ -1495,7 +1532,10 @@ function findExtensionsForEntry(
   entryPath: string,
   isFile: boolean = true
 ): OpenedEntry {
-  const fileExtension = extractFileExtension(entryPath).toLowerCase();
+  const fileExtension = extractFileExtension(
+    entryPath,
+    PlatformIO.getDirSeparator()
+  ).toLowerCase();
   const viewingExtensionPath = isFile
     ? findExtensionPathForId('@tagspaces/text-viewer')
     : 'about:blank';
